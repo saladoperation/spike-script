@@ -7,11 +7,12 @@ import Web.View.Tweets.Edit
 import Web.View.Tweets.Show
 import qualified Data.Text as T
 import qualified System.Environment as Environment
+import qualified IHP.Log as Log
 
 instance Controller TweetsController where
     action TweetsAction = do
         dummy <- T.pack <$> Environment.getEnv "DUMMY"
-        putStrLn dummy
+        Log.info dummy
         tweets <- query @Tweet |> fetch
         render IndexView { .. }
 
