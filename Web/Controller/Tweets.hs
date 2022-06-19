@@ -5,9 +5,13 @@ import Web.View.Tweets.Index
 import Web.View.Tweets.New
 import Web.View.Tweets.Edit
 import Web.View.Tweets.Show
+import qualified Data.Text as T
+import qualified System.Environment as Environment
 
 instance Controller TweetsController where
     action TweetsAction = do
+        dummy <- T.pack <$> Environment.getEnv "DUMMY"
+        putStrLn dummy
         tweets <- query @Tweet |> fetch
         render IndexView { .. }
 
