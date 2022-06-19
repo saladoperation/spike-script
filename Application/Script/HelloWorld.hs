@@ -5,4 +5,7 @@ import Application.Script.Prelude
 
 run :: Script
 run = do
-    putStrLn "Hello World!"
+    let tweet = newRecord @Tweet
+    tweet
+        |> createRecord
+    pure ()
