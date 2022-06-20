@@ -1,0 +1,2 @@
+DELETE FROM tweets
+ALTER TABLE tweets ADD COLUMN tweet_id TEXT NOT NULL;
