@@ -24,7 +24,9 @@ instance Controller TweetsController where
         r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
         let tweetIds = r ^.. responseBody . key "data" . values . key "id" ._String
         let tweets = tweetIds
-                    |> map (\id -> newRecord @Tweet)
+                    |> map (\tweetId -> newRecord @Tweet
+                                |> set #tweetId tweetId)
+        createMany tweets
         let tweet = newRecord
         render NewView { .. }
 
