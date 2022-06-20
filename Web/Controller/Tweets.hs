@@ -9,7 +9,7 @@ import qualified Data.Text as T
 import qualified System.Environment as Environment
 import qualified IHP.Log as Log
 import qualified Data.Text.Encoding as TSE
-import Network.Wreq
+import Network.Wreq hiding (get)
 import Control.Lens hiding ((|>), set)
 import Data.Aeson.Lens
 
@@ -23,7 +23,12 @@ instance Controller TweetsController where
         let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
         r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
         let tweetIds = r ^.. responseBody . key "data" . values . key "id" ._String
-        let tweets = tweetIds
+        tweets <- query @Tweet
+                |> filterWhereIn (#tweetId, tweetIds)
+                |> fetch
+        let existingIds = map (get #tweetId) tweets
+        let newIds = tweetIds \\ existingIds
+        let tweets = newIds
                     |> map (\tweetId -> newRecord @Tweet
                                 |> set #tweetId tweetId)
         createMany tweets
