@@ -22,8 +22,9 @@ instance Controller TweetsController where
         bearerToken <- T.pack <$> Environment.getEnv "BEARER_TOKEN"
         let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
         r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
-        let ids = r ^.. responseBody . key "data" . values . key "id" ._String
-        traverse putStrLn ids
+        let tweetIds = r ^.. responseBody . key "data" . values . key "id" ._String
+        let tweets = tweetIds
+                    |> map (\id -> newRecord @Tweet)
         let tweet = newRecord
         render NewView { .. }
 
