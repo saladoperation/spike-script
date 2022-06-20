@@ -8,11 +8,19 @@ import Web.View.Tweets.Show
 import qualified Data.Text as T
 import qualified System.Environment as Environment
 import qualified IHP.Log as Log
+import qualified Data.Text.Encoding as TSE
+import Network.Wreq
+import Control.Lens hiding ((|>), set)
+import Data.Aeson.Lens
 
 instance Controller TweetsController where
     action TweetsAction = do
-        dummy <- T.pack <$> Environment.getEnv "DUMMY"
-        Log.info dummy
+        bearerToken <- T.pack <$> Environment.getEnv "BEARER_TOKEN"
+        let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
+        r <- getWith opts "https://api.twitter.com/2/tweets?ids=1538335385163427841&tweet.fields=public_metrics&expansions=attachments.media_keys&media.fields=url"
+        case r ^? responseBody . key "includes" . key "media" . nth 0 . key "url" ._String of
+            Just url -> Log.info url
+            Nothing -> pure ()
         tweets <- query @Tweet |> fetch
         render IndexView { .. }
 
