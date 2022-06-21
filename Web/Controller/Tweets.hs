@@ -54,7 +54,7 @@ instance Controller TweetsController where
         let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer) rs
 
 
-        result :: [Metric]  <- sqlQuery "SELECT t0.* FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
+        result :: [(Id Tweet, Int)]  <- sqlQuery "SELECT t0.tweet_id, t0.retweet_count FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
 
 
         
