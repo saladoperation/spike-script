@@ -11,6 +11,6 @@ instance View IndexView where
     |]
 
 renderTweet tweet = [hsx|
-    <div>{fst tweet}</div>
-    <div>{snd tweet}</div>
+    <div>Retweets: {snd tweet}</div>
+    <blockquote class="twitter-tweet" width="180" height="520"><a href={"https://twitter.com/x/status/" <> fst tweet}></a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 |]
