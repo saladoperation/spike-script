@@ -33,11 +33,17 @@ instance Controller TweetsController where
                     |> map (\tweetId -> newRecord @Tweet
                                 |> set #tweetId tweetId)
         createMany tweets
-        let tweet = newRecord
 
         tweets <- query @Tweet |> fetch
         let twitterIds = map (get #tweetId) tweets
         let chunks = chunksOf 100 twitterIds 
+        let urls = map (T.unpack . ("https://api.twitter.com/2/tweets?tweet.fields=public_metrics&ids=" <>) . intercalate ",") chunks
+
+        rs <- mapM (getWith opts) urls
+
+        let tweetIds = concatMap (\r -> r ^.. responseBody . key "data" . values . key "id" ._String) rs
+
+        let tweet = newRecord
         render NewView { .. }
 
     action ShowTweetAction { tweetId } = do
