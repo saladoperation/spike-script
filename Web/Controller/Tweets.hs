@@ -13,6 +13,7 @@ import Network.Wreq hiding (get)
 import Control.Lens hiding ((|>), set)
 import Data.Aeson.Lens
 import Data.List.Split (chunksOf)
+import Data.String.Interpolate.IsString (i)
 
 instance Controller TweetsController where
     action TweetsAction = do
@@ -54,8 +55,20 @@ instance Controller TweetsController where
         let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer) rs
 
 
-        result :: [(Id Tweet, Int)]  <- sqlQuery "SELECT t0.tweet_id, t0.retweet_count FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
+        -- result :: [(Id Tweet, Int)] <- sqlQuery "SELECT t0.tweet_id, t0.retweet_count FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
 
+        result :: [(Id Tweet, Int)] <- sqlQuery [i|
+            select t0.tweet_id, t0.retweet_count
+            from metrics t0
+            left outer join metrics t1
+            on (t0.id = t1.id and t0.retweet_count < t1.retweet_count)
+            where t1.id is null
+        |]  ()
+
+
+        -- result :: [(Int, Int)] <- sqlQuery "SELECT retweet_count, retweet_count FROM metrics" ()
+
+        -- zip (,) tweetIds retweetCounts
 
         
 
