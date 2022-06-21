@@ -57,11 +57,13 @@ instance Controller TweetsController where
 
         -- result :: [(Id Tweet, Int)] <- sqlQuery "SELECT t0.tweet_id, t0.retweet_count FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
 
-        result :: [(Id Tweet, Int)] <- sqlQuery [i|
-            select t0.tweet_id, t0.retweet_count
+        result :: [(Id Tweet, Text, Int)] <- sqlQuery [i|
+            select t0.tweet_id, tweets.id, t0.retweet_count
             from metrics t0
             left outer join metrics t1
             on (t0.id = t1.id and t0.retweet_count < t1.retweet_count)
+            inner join tweets
+            on (t0.id = tweets.id)
             where t1.id is null
         |]  ()
 
