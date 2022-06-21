@@ -19,6 +19,15 @@ import Data.Maybe
 
 instance Controller TweetsController where
     action TweetsAction = do
+        result :: [(Text, Int)] <- sqlQuery [i|
+            select tweets.tweet_id, t0.retweet_count
+            from metrics t0
+            left outer join metrics t1
+            on (t0.id = t1.id and t0.created_at < t1.created_at)
+            inner join tweets
+            on (t0.tweet_id = tweets.id)
+            where t1.id is null
+        |]  ()
         tweets <- query @Tweet |> fetch
         render IndexView { .. }
 
