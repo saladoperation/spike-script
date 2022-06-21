@@ -34,6 +34,11 @@ instance Controller TweetsController where
                                 |> set #tweetId tweetId)
         createMany tweets
 
+        let metrics = newIds
+                    |> map (\tweetId -> newRecord @Metric)
+        
+        createMany metrics
+
         tweets <- query @Tweet |> fetch
         let twitterIds = map (get #tweetId) tweets
         let chunks = chunksOf 100 twitterIds 
