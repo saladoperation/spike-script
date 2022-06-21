@@ -5,12 +5,16 @@ data IndexView = IndexView { result :: [(Text, Int)]  }
 
 instance View IndexView where
     html IndexView { result } = [hsx|
-        <div>
+        <div class="d-flex flex-wrap">
         {forEach result renderTweet}
         </div>
     |]
 
 renderTweet tweet = [hsx|
-    <div>Retweets: {snd tweet}</div>
-    <blockquote class="twitter-tweet" width="180" height="520"><a href={"https://twitter.com/x/status/" <> fst tweet}></a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <div>
+        <div>Retweets: {snd tweet}</div>
+        <div>
+        <blockquote class="twitter-tweet"><a href={"https://twitter.com/x/status/" <> fst tweet}></a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </div>
 |]
