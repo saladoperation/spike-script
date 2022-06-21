@@ -27,6 +27,7 @@ instance Controller TweetsController where
             inner join tweets
             on (t0.tweet_id = tweets.id)
             where t1.id is null
+            order by t0.retweet_count desc
         |]  ()
         tweets <- query @Tweet |> fetch
         render IndexView { result }
