@@ -34,8 +34,11 @@ instance Controller TweetsController where
                                 |> set #tweetId tweetId)
         createMany tweets
 
-        let metrics = newIds
-                    |> map (\tweetId -> newRecord @Metric)
+        tweets <- query @Tweet |> fetch
+
+        let metrics = tweets
+                    |> map (\tweet -> newRecord @Metric
+                                |> set #tweetId (get #id tweet))
         
         createMany metrics
 
@@ -47,6 +50,14 @@ instance Controller TweetsController where
         rs <- mapM (getWith opts) urls
 
         let tweetIds = concatMap (\r -> r ^.. responseBody . key "data" . values . key "id" ._String) rs
+
+        let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer) rs
+
+
+        result :: [Metric]  <- sqlQuery "SELECT t0.* FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
+
+
+        
 
         let tweet = newRecord
         render NewView { .. }
