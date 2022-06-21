@@ -14,6 +14,8 @@ import Control.Lens hiding ((|>), set)
 import Data.Aeson.Lens
 import Data.List.Split (chunksOf)
 import Data.String.Interpolate.IsString (i)
+import qualified Data.Map as Map
+import Data.Maybe
 
 instance Controller TweetsController where
     action TweetsAction = do
@@ -35,13 +37,13 @@ instance Controller TweetsController where
                                 |> set #tweetId tweetId)
         createMany tweets
 
-        tweets <- query @Tweet |> fetch
+        -- tweets <- query @Tweet |> fetch
 
-        let metrics = tweets
-                    |> map (\tweet -> newRecord @Metric
-                                |> set #tweetId (get #id tweet))
+        -- let metrics = tweets
+        --             |> map (\tweet -> newRecord @Metric
+        --                         |> set #tweetId (get #id tweet))
         
-        createMany metrics
+        -- createMany metrics
 
         tweets <- query @Tweet |> fetch
         let twitterIds = map (get #tweetId) tweets
@@ -52,13 +54,16 @@ instance Controller TweetsController where
 
         let tweetIds = concatMap (\r -> r ^.. responseBody . key "data" . values . key "id" ._String) rs
 
-        let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer) rs
+        let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer
+                                                |> map fromIntegral) rs
+        
+        -- let current = Map.fromList $ zip tweetIds retweetCounts
 
 
         -- result :: [(Id Tweet, Int)] <- sqlQuery "SELECT t0.tweet_id, t0.retweet_count FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
 
-        result :: [(Id Tweet, Text, Int)] <- sqlQuery [i|
-            select t0.tweet_id, tweets.id, t0.retweet_count
+        result :: [(Text, Int)] <- sqlQuery [i|
+            select tweets.tweet_id, t0.retweet_count
             from metrics t0
             left outer join metrics t1
             on (t0.id = t1.id and t0.retweet_count < t1.retweet_count)
@@ -66,6 +71,35 @@ instance Controller TweetsController where
             on (t0.id = tweets.id)
             where t1.id is null
         |]  ()
+
+        let updates = zip tweetIds retweetCounts \\ result
+
+        let dictionary = tweets 
+                        |> map (\tweet -> (get #tweetId tweet, get #id tweet))
+                        |> Map.fromList
+
+        let fromTwitterId twitterId = fromJust $ Map.lookup twitterId dictionary 
+
+        let metrics = map (\(id, retweetCount) -> newRecord @Metric
+                                                    |> set #tweetId (fromTwitterId id)
+                                                    |> set #retweetCount retweetCount) updates
+
+        createMany metrics
+
+
+        -- let updates = result
+        --                 |> filter (\(id, tweetId, previousCount) -> case Map.lookup tweetId current of
+        --                                                                 Nothing -> False
+        --                                                                 Just currentCount -> currentCount /= previousCount)
+        --                 |> map (\(id, tweetId, previousCount) -> (id, fromJust $ Map.lookup tweetId current))
+                    
+
+        -- let metrics = map (\(id, retweetCount) -> newRecord @Metric 
+        --                                         |> set #tweetId id
+        --                                         |> set #retweetCount retweetCount) updates
+    
+        -- createMany metrics
+
 
 
         -- result :: [(Int, Int)] <- sqlQuery "SELECT retweet_count, retweet_count FROM metrics" ()
