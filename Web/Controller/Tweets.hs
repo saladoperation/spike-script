@@ -29,7 +29,7 @@ instance Controller TweetsController where
             where t1.id is null
         |]  ()
         tweets <- query @Tweet |> fetch
-        render IndexView { .. }
+        render IndexView { result }
 
     action NewTweetAction = do
         bearerToken <- T.pack <$> Environment.getEnv "BEARER_TOKEN"
