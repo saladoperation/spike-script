@@ -1,0 +1,1 @@
+ALTER TABLE metrics ALTER COLUMN retweet_count SET DEFAULT 0;
