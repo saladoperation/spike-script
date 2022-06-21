@@ -12,6 +12,7 @@ import qualified Data.Text.Encoding as TSE
 import Network.Wreq hiding (get)
 import Control.Lens hiding ((|>), set)
 import Data.Aeson.Lens
+import Data.List.Split (chunksOf)
 
 instance Controller TweetsController where
     action TweetsAction = do
@@ -33,6 +34,10 @@ instance Controller TweetsController where
                                 |> set #tweetId tweetId)
         createMany tweets
         let tweet = newRecord
+
+        tweets <- query @Tweet |> fetch
+        let twitterIds = map (get #tweetId) tweets
+        let chunks = chunksOf 100 twitterIds 
         render NewView { .. }
 
     action ShowTweetAction { tweetId } = do
