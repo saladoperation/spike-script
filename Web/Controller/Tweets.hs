@@ -47,14 +47,6 @@ instance Controller TweetsController where
                                 |> set #tweetId tweetId)
         createMany tweets
 
-        -- tweets <- query @Tweet |> fetch
-
-        -- let metrics = tweets
-        --             |> map (\tweet -> newRecord @Metric
-        --                         |> set #tweetId (get #id tweet))
-        
-        -- createMany metrics
-
         tweets <- query @Tweet |> fetch
         let twitterIds = map (get #tweetId) tweets
         let chunks = chunksOf 100 twitterIds 
@@ -66,11 +58,6 @@ instance Controller TweetsController where
 
         let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer
                                                 |> map fromIntegral) rs
-        
-        -- let current = Map.fromList $ zip tweetIds retweetCounts
-
-
-        -- result :: [(Id Tweet, Int)] <- sqlQuery "SELECT t0.tweet_id, t0.retweet_count FROM metrics t0 LEFT OUTER JOIN metrics t1 ON (t0.id = t1.id AND t0.retweet_count < t1.retweet_count) WHERE t1.id IS NULL" ()
 
         result :: [(Text, Int)] <- sqlQuery [i|
             select tweets.tweet_id, t0.retweet_count
@@ -95,28 +82,6 @@ instance Controller TweetsController where
                                                     |> set #retweetCount retweetCount) updates
 
         createMany metrics
-
-
-        -- let updates = result
-        --                 |> filter (\(id, tweetId, previousCount) -> case Map.lookup tweetId current of
-        --                                                                 Nothing -> False
-        --                                                                 Just currentCount -> currentCount /= previousCount)
-        --                 |> map (\(id, tweetId, previousCount) -> (id, fromJust $ Map.lookup tweetId current))
-                    
-
-        -- let metrics = map (\(id, retweetCount) -> newRecord @Metric 
-        --                                         |> set #tweetId id
-        --                                         |> set #retweetCount retweetCount) updates
-    
-        -- createMany metrics
-
-
-
-        -- result :: [(Int, Int)] <- sqlQuery "SELECT retweet_count, retweet_count FROM metrics" ()
-
-        -- zip (,) tweetIds retweetCounts
-
-        
 
         let tweet = newRecord
         render NewView { .. }
