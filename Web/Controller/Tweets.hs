@@ -69,10 +69,6 @@ instance Controller TweetsController where
             order by t0.retweet_count desc
         |]  ()
         
-        mapM (putStrLn . show) $ zip tweetIds retweetCounts
-        -- mapM putStrLn result
-
-
         let updates = zip tweetIds retweetCounts \\ result
 
         let tweets = map (\(id, retweetCount) -> newRecord @Tweet
