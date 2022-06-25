@@ -16,54 +16,56 @@ import Data.Maybe
 
 run :: Script
 run = do
-    bearerToken <- T.pack <$> Environment.getEnv "BEARER_TOKEN"
-    let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
-    r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
-    let tweetIds = r ^.. responseBody . key "data" . values . key "id" ._String
-    tweets <- query @Tweet
-            |> filterWhereIn (#tweetId, tweetIds)
+        bearerToken <- T.pack <$> Environment.getEnv "BEARER_TOKEN"
+        let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
+        r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
+        let tweetIds :: [Id Tweet] = map Id $ r ^.. responseBody . key "data" . values . key "id" ._String
+        tweets <- query @Tweet
+            |> distinctOn #id
             |> fetch
-    let existingIds = map (get #tweetId) tweets
-    let newIds = tweetIds \\ existingIds
-    let tweets = newIds
-                |> map (\tweetId -> newRecord @Tweet
-                            |> set #tweetId tweetId)
-    createMany tweets
+        let existingIds :: [Id Tweet] = map (get #id) tweets
 
-    tweets <- query @Tweet |> fetch
-    let twitterIds = map (get #tweetId) tweets
-    let chunks = chunksOf 100 twitterIds 
-    let urls = map (T.unpack . ("https://api.twitter.com/2/tweets?tweet.fields=public_metrics&ids=" <>) . intercalate ",") chunks
+        let newIds = tweetIds \\ existingIds
+        let tweets = newIds
+                    |> map (\id -> newRecord @Tweet
+                                |> set #id id)
+        createMany tweets
 
-    rs <- mapM (getWith opts) urls
+        tweets <- query @Tweet
+            |> distinctOn #id
+            |> fetch
+        let twitterIds = map (toText . get #id) tweets
+        let chunks = chunksOf 100 twitterIds 
+        let urls = map (T.unpack . ("https://api.twitter.com/2/tweets?tweet.fields=public_metrics&ids=" <>) . intercalate ",") chunks
 
-    let tweetIds = concatMap (\r -> r ^.. responseBody . key "data" . values . key "id" ._String) rs
+        rs <- mapM (getWith opts) urls
 
-    let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer
-                                            |> map fromIntegral) rs
+        let tweetIds = concatMap (\r -> r ^.. responseBody . key "data" . values . key "id" ._String) rs
 
-    result :: [(Text, Int)] <- sqlQuery [i|
-        select tweets.tweet_id, t0.retweet_count
-        from metrics t0
-        left outer join metrics t1
-        on (t0.tweet_id = t1.tweet_id and t0.created_at < t1.created_at)
-        inner join tweets
-        on (t0.tweet_id = tweets.id)
-        where t1.id is null
-    |]  ()
+        let retweetCounts = concatMap (\r -> r ^.. responseBody . key "data" . values . key "public_metrics" . key "retweet_count" . _Integer
+                                                |> map fromIntegral) rs
 
-    let updates = zip tweetIds retweetCounts \\ result
+        result :: [(Text, Int)] <- sqlQuery [i|
+            select t0.id, t0.retweet_count
+            from tweets t0
+            left outer join tweets t1
+            on (t0.id = t1.id and t0.created_at < t1.created_at)
+            where t1.id is null
+            order by t0.retweet_count desc
+        |]  ()
+        
+        mapM (putStrLn . show) $ zip tweetIds retweetCounts
 
-    let dictionary = tweets 
-                    |> map (\tweet -> (get #tweetId tweet, get #id tweet))
-                    |> Map.fromList
 
-    let fromTwitterId twitterId = fromJust $ Map.lookup twitterId dictionary 
+        let updates = zip tweetIds retweetCounts \\ result
 
-    let metrics = map (\(id, retweetCount) -> newRecord @Metric
-                                                |> set #tweetId (fromTwitterId id)
-                                                |> set #retweetCount retweetCount) updates
+        let tweets = map (\(id, retweetCount) -> newRecord @Tweet
+                                                    |> set #id (Id id)
+                                                    |> set #retweetCount retweetCount) updates
 
-    createMany metrics
+        createMany tweets
+        pure ()
 
-    pure ()
+
+toText :: Id Tweet -> Text
+toText (Id s) = s
