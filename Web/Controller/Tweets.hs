@@ -34,8 +34,9 @@ instance Controller TweetsController where
 
     action NewTweetAction = do
         let Config.BearerToken bearerToken = getAppConfig @Config.BearerToken
+        let Config.Search search = getAppConfig @Config.Search
         let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
-        r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
+        r <- getWith opts $ T.unpack search
         let tweetIds :: [Id Tweet] = map Id $ r ^.. responseBody . key "data" . values . key "id" ._String
         tweets <- query @Tweet
             |> distinctOn #id
