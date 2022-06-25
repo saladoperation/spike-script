@@ -13,8 +13,7 @@ config = do
     option (AppHostname "localhost")
 
 
-    -- "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
-    search <- Search <$> env @Text "SEARCH"
+    search <- Search <$> envOrDefault "SEARCH" "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
     option search
-    bearerToken <- BearerToken <$> env @Text "BEARER_TOKEN"
+    bearerToken <- BearerToken <$> env "BEARER_TOKEN"
     option bearerToken
