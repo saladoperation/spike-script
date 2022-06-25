@@ -16,6 +16,8 @@ import Data.List.Split (chunksOf)
 import Data.String.Interpolate.IsString (i)
 import qualified Data.Map as Map
 import Data.Maybe
+import qualified Config
+
 
 instance Controller TweetsController where
     action TweetsAction = do
@@ -31,7 +33,7 @@ instance Controller TweetsController where
         render IndexView { result }
 
     action NewTweetAction = do
-        bearerToken <- T.pack <$> Environment.getEnv "BEARER_TOKEN"
+        let Config.BearerToken bearerToken = getAppConfig @Config.BearerToken
         let opts = defaults & header "Authorization" .~ [TSE.encodeUtf8 $ "Bearer " <> bearerToken]
         r <- getWith opts "https://api.twitter.com/2/tweets/search/recent?query=-is%3Aretweet%0Ahas%3Aimages%0A%22%23Studio%22%0A%22%40worker99371032%22&sort_order=recency"
         let tweetIds :: [Id Tweet] = map Id $ r ^.. responseBody . key "data" . values . key "id" ._String
